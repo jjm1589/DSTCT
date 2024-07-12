@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0 python train_DSTCT.py --root_path ../data/FHPS --exp FHPS/OURS --num_classes 3 --labeled_num 14
