@@ -33,5 +33,4 @@ for case in image_list:
     f.close()
     slice_num += 1
 
-print("Converted all FHPS volumes to 2D slices")
 print("Total {} slices".format(slice_num))
