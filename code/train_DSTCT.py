@@ -347,7 +347,7 @@ def train(args, snapshot_path):
             optimizer1.step()
             optimizer2.step()
 
-            # update_ema_variables(model2, ema_model, args.ema_decay, iter_num)
+            update_ema_variables(model2, ema_model, args.ema_decay, iter_num)
 
             lr_ = base_lr * (1.0 - iter_num / max_iterations) ** 0.9
             iter_num = iter_num + 1
@@ -373,8 +373,8 @@ def train(args, snapshot_path):
                 outputs = torch.argmax(torch.softmax(outputs2, dim=1), dim=1, keepdim=True)
                 writer.add_image('train/model2_Prediction', outputs[1, ...] * 50, iter_num)
 
-                # outputs = torch.argmax(torch.softmax(ema_output, dim=1), dim=1, keepdim=True)
-                # writer.add_image('train/ema_model_Prediction', outputs[1, ...] * 50, iter_num)
+                outputs = torch.argmax(torch.softmax(ema_output, dim=1), dim=1, keepdim=True)
+                writer.add_image('train/ema_model_Prediction', outputs[1, ...] * 50, iter_num)
 
                 labs = label_batch[1, ...].unsqueeze(0) * 50
                 writer.add_image('train/GroundTruth', labs, iter_num)
@@ -442,39 +442,38 @@ def train(args, snapshot_path):
                 model2.train()
 
                 # ema model evaluation
-                # ema_model.eval()
-                # metric_list = 0.0
-                # for i_batch, sampled_batch in enumerate(valloader):
-                #     metric_i = test_single_volume(sampled_batch["image"], sampled_batch["label"], ema_model,
-                #                                   classes=num_classes, patch_size=args.patch_size)
-                #     metric_list += np.array(metric_i)
-                # metric_list = metric_list / len(db_val)
-                # for class_i in range(num_classes - 1):
-                #     writer.add_scalar('info/ema_model_val_{}_dice'.format(class_i + 1), metric_list[class_i, 0],
-                #                       iter_num)
-                #     writer.add_scalar('info/ema_model_val_{}_hd95'.format(class_i + 1), metric_list[class_i, 1],
-                #                       iter_num)
+                ema_model.eval()
+                metric_list = 0.0
+                for i_batch, sampled_batch in enumerate(valloader):
+                    metric_i = test_single_volume(sampled_batch["image"], sampled_batch["label"], ema_model,
+                                                  classes=num_classes, patch_size=args.patch_size)
+                    metric_list += np.array(metric_i)
+                metric_list = metric_list / len(db_val)
+                for class_i in range(num_classes - 1):
+                    writer.add_scalar('info/ema_model_val_{}_dice'.format(class_i + 1), metric_list[class_i, 0],
+                                      iter_num)
+                    writer.add_scalar('info/ema_model_val_{}_hd95'.format(class_i + 1), metric_list[class_i, 1],
+                                      iter_num)
 
-                # performance3 = np.mean(metric_list, axis=0)[0]
+                performance3 = np.mean(metric_list, axis=0)[0]
 
-                # mean_hd953 = np.mean(metric_list, axis=0)[1]
-                # writer.add_scalar('info/ema_model_val_mean_dice', performance3, iter_num)
-                # writer.add_scalar('info/ema_model_val_mean_hd95', mean_hd953, iter_num)
+                mean_hd953 = np.mean(metric_list, axis=0)[1]
+                writer.add_scalar('info/ema_model_val_mean_dice', performance3, iter_num)
+                writer.add_scalar('info/ema_model_val_mean_hd95', mean_hd953, iter_num)
 
-                # if performance3 > best_performance3:
-                #     best_performance3 = performance3
-                #     save_mode_path = os.path.join(snapshot_path, 'ema_model_iter_{}_dice_{}.pth'.format(iter_num, round(
-                #         best_performance3, 4)))
-                #     save_best = os.path.join(snapshot_path, '{}_best_ema_model.pth'.format(args.model))
-                #     torch.save(ema_model.state_dict(), save_mode_path)
-                #     torch.save(ema_model.state_dict(), save_best)
+                if performance3 > best_performance3:
+                    best_performance3 = performance3
+                    save_mode_path = os.path.join(snapshot_path, 'ema_model_iter_{}_dice_{}.pth'.format(iter_num, round(
+                        best_performance3, 4)))
+                    save_best = os.path.join(snapshot_path, '{}_best_ema_model.pth'.format(args.model))
+                    torch.save(ema_model.state_dict(), save_mode_path)
+                    torch.save(ema_model.state_dict(), save_best)
 
-                # logging.info(
-                #     'iteration %d : ema_model_mean_dice : %f ema_model_mean_hd95 : %f' % (
-                #         iter_num, performance3, mean_hd953))
+                logging.info(
+                    'iteration %d : ema_model_mean_dice : %f ema_model_mean_hd95 : %f' % (
+                        iter_num, performance3, mean_hd953))
 
             if iter_num % 3000 == 0:
-            # if iter_num % 200 == 0:
                 save_mode_path = os.path.join(snapshot_path, 'model1_iter_' + str(iter_num) + '.pth')
                 torch.save(model1.state_dict(), save_mode_path)
                 logging.info("save model1 to {}".format(save_mode_path))
@@ -483,13 +482,12 @@ def train(args, snapshot_path):
                 torch.save(model2.state_dict(), save_mode_path)
                 logging.info("save model2 to {}".format(save_mode_path))
 
-                # save_mode_path = os.path.join(snapshot_path, 'ema_model_iter_' + str(iter_num) + '.pth')
-                # torch.save(ema_model.state_dict(), save_mode_path)
-                # logging.info("save ema_model to {}".format(save_mode_path))
+                save_mode_path = os.path.join(snapshot_path, 'ema_model_iter_' + str(iter_num) + '.pth')
+                torch.save(ema_model.state_dict(), save_mode_path)
+                logging.info("save ema_model to {}".format(save_mode_path))
 
             if iter_num >= max_iterations:
                 break
-            time1 = time.time()
         if iter_num >= max_iterations:
             iterator.close()
             break
